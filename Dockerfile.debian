@@ -1,0 +1,20 @@
+ARG DEBIAN_VERSION=stable-20231218-slim
+
+FROM debian:${DEBIAN_VERSION} as builder
+
+ARG HARDENED_MALLOC_VERSION=12
+
+WORKDIR /usr/src/hardened_malloc
+
+RUN apt-get update \ 
+ && apt-get install --no-install-recommends --no-install-suggests -y build-essential ca-certificates git gcc make \
+ && git clone --depth 1 --branch ${HARDENED_MALLOC_VERSION} https://github.com/GrapheneOS/hardened_malloc . \
+ && make \
+ && make VARIANT=light
+
+FROM debian:${DEBIAN_VERSION}
+
+COPY --from=builder /usr/src/hardened_malloc/out/libhardened_malloc.so /usr/local/lib/
+COPY --from=builder /usr/src/hardened_malloc/out-light/libhardened_malloc-light.so /usr/local/lib/
+
+ENV LD_PRELOAD="/usr/local/lib/libhardened_malloc.so"
